@@ -4,22 +4,29 @@ var canvas = document.getElementsByTagName('canvas')[0];
 
 var scene = uptick.scene();
 
+var bouncerSpeed = 5;
+
 scene.addEntity('bouncer', {
 	initial: {
 		y: 250,
-		goingDown: true
+		x: 250,
+		colour: "red"
 	},
-	update: function(state) {
-		var goingDown = (state.goingDown && state.y < 490) ||
-			(!state.goingDown && state.y < 10);
+	update: function(state, scene, input) {
 		return {
-			y: state.y + (goingDown ? 10 : -10),
-			goingDown: goingDown
+			x: input.keysHeld.left ? Math.max(10, state.x - bouncerSpeed) :
+				input.keysHeld.right ? Math.min(490, state.x + bouncerSpeed) :
+				state.x,
+			y: input.keysHeld.up ? Math.max(10, state.y - bouncerSpeed) :
+				input.keysHeld.down ? Math.min(490, state.y + bouncerSpeed) :
+				state.y,
+			colour: input.click ? (state.colour === "red" ? "green" : "red") :
+				state.colour
 		};
 	},
 	draw: function(ctx, state) {
-		ctx.fillStyle = "black";
-		ctx.fillRect(240, state.y - 10, 20, 20);
+		ctx.fillStyle = state.colour;
+		ctx.fillRect(state.x - 10, state.y - 10, 20, 20);
 	}
 });
 

@@ -1,22 +1,27 @@
+require('raf.js'); // polyfills requestAnimationFrame
+var keyAlias = require('keycode');
+
 exports.scene = function() {
 	var displaying = false;
 	var width, height, ctx;
 	var entities = {};
 	var state = {};
+	var inputTracker;
 
 	function drawLoop() {
 		if (!displaying) return;
 		state = tick(entities, state);
+		inputTracker.tick();
 		ctx.clearRect(0, 0, width, height);
 		draw(ctx, entities, state);
-		requestAnimationFrame(drawLoop); // TODO: polyfill
+		requestAnimationFrame(drawLoop);
 	}
 
 	function tick(nodeEntities, nodeState) {
 		var newState = {};
 		Object.keys(nodeEntities).forEach(function(entityKey) {
 			var entity = nodeEntities[entityKey];
-			newState[entityKey] = entity.update(nodeState[entityKey], state, {} /* TODO */);
+			newState[entityKey] = entity.update(nodeState[entityKey], state, inputTracker.input);
 			Object.keys(entity.children).forEach(function(childKey) {
 				newState[childKey] = tick(entities[childKey], nodeEntities[entityKey], nodeState[entityKey]);
 			});
@@ -60,6 +65,7 @@ exports.scene = function() {
 			ctx = canvas.getContext('2d');
 			width = canvas.width;
 			height = canvas.height;
+			inputTracker = makeInputTracker(canvas);
 			drawLoop();
 		},
 		pause: function() {
@@ -81,3 +87,55 @@ exports.scene = function() {
 };
 
 // TODO: drawOrder, arrays in children
+
+function makeInputTracker(canvas) {
+	var input = {
+		keysDown: {},
+		keysUp: {},
+		keysHeld: {},
+		click: false,
+		clickHeld: false,
+		mouseLoc: [0, 0]
+	};
+
+	function tick() {
+		input.keysUp = {};
+		input.keysDown = {};
+		input.click = false;
+	}
+
+	addEventListener('mousedown', function(e) {
+		input.click = true;
+		input.clickHeld = true;
+	});
+
+	addEventListener('mouseup', function(e) {
+		input.clickHeld = false;
+	});
+
+	addEventListener('mousemove', function(e) {
+		input.mouseLoc = [
+			Math.max(0, e.pageX - canvas.offsetLeft),
+			Math.max(0, e.pageX - canvas.offsetTop)
+		];
+	});
+
+	addEventListener('keydown', function(e) {
+		var keyCode = e.which || e.keyCode;
+		var alias = keyAlias(keyCode);
+		input.keysDown[keyCode] = input.keysDown[alias] = true;
+		input.keysHeld[keyCode] = input.keysHeld[alias] = true;
+	});
+
+	addEventListener('keyup', function(e) {
+		var keyCode = e.which || e.keyCode;
+		var alias = keyAlias(keyCode);
+		input.keysDown[keyCode] = input.keysDown[alias] = false;
+		input.keysHeld[keyCode] = input.keysHeld[alias] = false;
+	});
+
+	return {
+		input: input,
+		tick: tick
+	};
+}
